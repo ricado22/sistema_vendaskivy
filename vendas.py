@@ -97,6 +97,8 @@ class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
         self.data = []
+        self.trocar_produto=None
+            
 
     def add_artigo(self, artigo):
         artigo['selecionado'] = False
@@ -113,30 +115,62 @@ class RV(RecycleView):
                 self.data.append(artigo)
         else:
             self.data.append(artigo)
+
+    def deletar_art_produto(self):
+        indice = self.art_selecionado_produto()
+        preco = 0
+        if indice >= 0:
+            self._layout_manager.deselect_node(self._layout_manager._last_selected_node)
+            preco = self.data[indice]['preco_total']
+            self.data.pop(indice)
+            self.refresh_from_data()
+        return preco
     
+    def mod_trocar_arte(self):
+        indice = self.art_selecionado_produto()
+        if indice >= 0:
+            popup = Trocar_Qtde_Popup(self.data[indice], self.atualizar_art_qtide)
+            popup.open()
+
+    def atualizar_art_qtide(self, valor):
+        indice = self.art_selecionado_produto()
+        if indice >= 0:
+            if valor==0:
+                self.data.pop(indice)
+                self._layout_manager.deselect_node(self._layout_manager._last_selected_node)
+            else:
+                self.data[indice]['quantidade_carrinho'] = valor
+                self.data[indice]['preco_total'] = self.data[indice]['preco']*valor
+            
+            self.refresh_from_data()
+            novo_total = 0
+            for data in self.data:
+                novo_total += data['preco_total']
+                self.trocar_produto(False, novo_total)
+
     def art_selecionado_produto(self):
         indice=-1
         for i in range(len(self.data)):
             if self.data[i]['selecionado']:
                 indice=i
-                break
+            break
         return indice
 
 class Produto_Nome_Popup(Popup):
     def __init__(self, input_nome, add_produto_callback, **kwargs):
         super(Produto_Nome_Popup, self).__init__(**kwargs)
         self.input_nome = input_nome
-        self
-
+        self.add_produto = add_produto_callback
+    
     def popup_mostrar_artigo_produto(self):
         self.open()
         for nome in produtos_list_event:
             if nome['nome'].lower().find(self.input_nome) >= 0:
                 produto = {'codigo':nome['codigo'], 'nome':nome['nome'], 'preco':nome['preco'], 'quantidade':nome['quantidade']}
                 self.ids.rvs.add_artigo(produto)
-    
+
     def selecionar_art_produto(self):
-        indice = self.ids.rvs.add_artigo()
+        indice = self.ids.rvs.art_selecionado_produto()
         if indice >= 0:
             _art_produto = self.ids.rvs.data[indice]
             artigo = {}
@@ -146,13 +180,53 @@ class Produto_Nome_Popup(Popup):
             artigo['quantidade_carrinho'] = 1
             artigo['quantidade_invent'] = _art_produto['quantidade']
             artigo['preco_total'] = _art_produto['preco']
-            
+            if callable(self.add_produto):           
+                self.add_produto(artigo)
+            self.dismiss()
+
+class Trocar_Qtde_Popup(Popup):
+    def __init__(self, data, atualizar_art_qtide_callback, **kwargs):
+        super(Trocar_Qtde_Popup, self).__init__(**kwargs)
+        self.data = data
+        self.atualizar_art_qtide = atualizar_art_qtide_callback
+        self.ids.nova_qtide_1.text = "produto:"+ self.data['nome'].capitalize()
+        self.ids.nova_qtide_2.text = "Quantidade:"+ str(self.data['quantidade_carrinho'])
+
+    def validar_text_input(self, texto_input):
+        try:
+            nova_qtide = int(texto_input)
+            self.ids.notificacao_nao_valida.text = ''
+            self.atualizar_art_qtide(nova_qtide)
+            self.dismiss()
+        except:
+            self.ids.notificacao_nao_valida.text = 'Esta quantidade não esta valida'
     
+class PagarPopup(Popup):
+    def __init__(self, total, terminar_pagamento_callback, **kwargs):
+        super(PagarPopup, self).__init__(**kwargs)
+        self.total = total
+        self.terminar_pagamento = terminar_pagamento_callback
+        self.ids.total.text = 'R$ ' + "{:.2f}".format(self.total)
+        self.ids.botao_pagar.bind(on_release=self.dismiss)
     
+    def mostrar_troca(self):
+        recebido = self.ids.recebido.text
+        try:
+            troco = float(recebido)-float(self.total)
+            if troco >= 0:
+                self.ids.troco.text = 'R$ ' + "{:.2f}".format(troco)
+                self.ids.botao_pagar.disabled = False
+            else:
+                self.ids.troco.text = 'valor abaixo a ser pago'
+        except:
+            self.ids.troco.text = 'Valor incorreto'
+
 class VendasJanela(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.total = 0.0
+        self.ids.rvs.trocar_produto = self.trocar_produto
+
 
     def add_produto_codigo(self, codigo):
         for produto in produtos_list_event:
@@ -178,14 +252,27 @@ class VendasJanela(BoxLayout):
         self.ids.sub_total.text = 'R$ ' + "{:.2f}".format(self.total)
         self.ids.rvs.add_artigo(artigo)
 
-    def deletar_produto(self):
-        print("DELETAR PRODUTO FUNCIONANDO")
+    def deletar_art_produto(self):
+        menor_preco = self.ids.rvs.deletar_art_produto()
+        self.total -= menor_preco
+        self.ids.sub_total.text = 'R$ ' + "{:.2f}".format(self.total)
 
-    def trocar_produto(self):
-        print("TROCAR PRODUTO ESTA FUNCIONANDO")
+    def trocar_produto(self, trocar=True, novo_total=None):
+        if trocar:
+            self.ids.rvs.mod_trocar_arte()
+        else:
+            self.total = novo_total
+            self.ids.sub_total.text = 'R$ ' + "{:.2f}".format(self.total)
 
     def pagar(self):
-        print("pagar")
+        if self.ids.rvs.data:
+            popup = PagarPopup(self.total, self.terminar_pagamento)
+            popup.open()
+        else:
+            self.ids.notificacao_erro.text = 'Não tem nenhum produto a pagar'
+
+    def terminar_pagamento(self):
+        self.ids.notificacao_sucesso.text = 'Pagamento realizado com sucesso'
 
     def nova_compra(self):
         print("NOVA COMPRA ESTA FUNCIONANDO")

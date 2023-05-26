@@ -137,7 +137,90 @@
             size_hint_y: .04
             text: 'Seja Bem Vindo / Curso De Kivy'
 
+<Trocar_Qtde_Popup>:
+    size_hint: .5,.5
+    title: 'Trocar Quantidade'
+	auto_dismiss: False
+    BoxLayout:
+        orientation:'vertical'
+        BoxLayout:
+            orientation:'vertical'
+            BoxLayout:
+				orientation:'vertical'
+                Label_azul:
+                    id: nova_qtide_1
 
+                Label_azul:
+                    id: nova_qtide_2
+				
+				Label_azul:
+                    id: notificacao_nao_valida
+				TextInput:
+					id: nova_qtide_texto
+					multiline: False
+					hint_text: 'Nova Quantidade'
+				
+				Btn_verde:
+                	id: nova_qtide_botao
+					text: 'Cadastrar'
+					on_release: root.validar_text_input(root.ids.nova_qtide_texto.text)
+            
+            	Btn_vermelho:
+                	text: 'Cancelar'
+                	on_release: root.dismiss()
+        Label:
+            size_hint_y: .04
+            text: 'Seja Bem Vindo / Curso De Kivy'
+
+<PagarPopup>:
+	size_hint: .4, .5
+	title: 'Formulario De Pagamento'
+	BoxLayout:
+		orientation:'vertical'
+		spacing: .5
+		padding: .5
+		BoxLayout:
+			size_hint_y: .25
+			Label:
+				size_hint_x: .5
+				text: 'Total a Pagar'
+			Label:
+				id: total
+				size_hint_x: .5
+		BoxLayout:
+			size_hint_y: .25
+			Label:
+				size_hint_x: .5
+				text:'Valor'
+			BoxLayout:
+				size_hint_x: .5
+				orientation: 'vertical'
+				TextInput:
+					id: recebido
+					hint_text: 'Valor Pago'
+					multiline: False
+					on_text_validate: root.mostrar_troca()
+				Btn_verde:
+					text: 'Efetuar'
+					on_release: root.mostrar_troca()
+		BoxLayout:
+			size_hint_y: .25
+			Label:
+				size_hint_x: .5
+				text: 'Troco: '
+			Label:
+				id: troco
+				size_hint_x: .5
+		BoxLayout:
+			size_hint_y: .25
+			Btn_verde:
+				id: botao_pagar
+				disabled: True
+				text: 'Efetuar Pagamento'
+				on_release: root.terminar_pagamento()
+			Btn_vermelho:
+				text: 'Cancelar'
+				on_release: root.dismiss()
 
 <VendasJanela>:
 	canvas.before:
@@ -242,10 +325,10 @@
 				spacing: .5
 				Btn_vermelho:
 					text: 'Deletar Produto'
-					on_release: root.deletar_produto()
+					on_release: root.deletar_art_produto()
 				Btn_verde:
 					text: 'Atualizar Quantidade'
-					on_release: root.trocar_produco()
+					on_release: root.trocar_produto()
 		BoxLayout:
 			size_hint_x: .3
 			orientation: 'vertical'
